@@ -1,0 +1,36 @@
+apply plugin: 'com.android.application'
+
+def safeExtGet(prop, fallback) {
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
+android {
+    namespace "org.hutko.android.demo"
+    compileSdkVersion 34
+
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+        applicationId "org.hutko.android.demo"
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}
+
+
+dependencies {
+    implementation 'com.google.android.gms:play-services-base:18.2.0'
+    implementation 'com.google.android.gms:play-services-wallet:19.2.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'  // ✅ Добавлено
+    implementation 'com.google.android.material:material:1.12.0'  // ✅ Добавлено
+    implementation project(':library')
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}

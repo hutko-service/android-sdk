@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="HutkoTheme" parent="android:Theme.Holo.Light.DarkActionBar">
+        <item name="android:editTextStyle">@style/HutkoEditText</item>
+    </style>
+
+    <style name="HutkoEditText" parent="android:style/Widget.Holo.EditText">
+        <!--<item name="android:background">#ffff00</item>-->
+    </style>
+</resources>

@@ -1,0 +1,79 @@
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+// Проверяем и добавляем isReleaseBuild(), если её нет
+if (!project.hasProperty("isReleaseBuild")) {
+    ext.isReleaseBuild = { ->
+        return !VERSION_NAME.toString().contains("SNAPSHOT")
+    }
+}
+
+def sonatypeRepositoryUrl
+if (isReleaseBuild()) {
+    println 'RELEASE BUILD'
+    sonatypeRepositoryUrl = hasProperty('RELEASE_REPOSITORY_URL') ? RELEASE_REPOSITORY_URL
+            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+} else {
+    println 'SNAPSHOT BUILD'
+    sonatypeRepositoryUrl = hasProperty('SNAPSHOT_REPOSITORY_URL') ? SNAPSHOT_REPOSITORY_URL
+            : "https://oss.sonatype.org/content/repositories/snapshots/"
+}
+
+def getRepositoryUsername() {
+    return hasProperty('nexusUsername') ? nexusUsername : ""
+}
+
+def getRepositoryPassword() {
+    return hasProperty('nexusPassword') ? nexusPassword : ""
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.release  // ✅ Оставляем только здесь!
+
+                groupId = GROUP
+                artifactId = POM_ARTIFACT_ID
+                version = VERSION_NAME
+
+                pom {
+                    name = POM_ARTIFACT_ID
+                    description = POM_DESCRIPTION
+                    url = POM_URL
+                    scm {
+                        url = POM_SCM_URL
+                        connection = POM_SCM_CONNECTION
+                        developerConnection = POM_SCM_DEV_CONNECTION
+                    }
+                    licenses {
+                        license {
+                            name = POM_LICENCE_NAME
+                            url = POM_LICENCE_URL
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = POM_DEVELOPER_ID
+                            name = POM_DEVELOPER_NAME
+                        }
+                    }
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                url = sonatypeRepositoryUrl
+                credentials {
+                    username = getRepositoryUsername()
+                    password = getRepositoryPassword()
+                }
+            }
+        }
+    }
+
+    signing {
+        sign publishing.publications.mavenJava
+    }
+}

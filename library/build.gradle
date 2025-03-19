@@ -1,0 +1,54 @@
+apply plugin: 'com.android.library'
+apply plugin: 'maven-publish'
+apply from: '../maven_push.gradle'
+
+def safeExtGet(prop, fallback) {
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
+
+android {
+    namespace "org.hutko.android"  // ✅ Убедитесь, что соответствует вашему пакету!
+    compileSdkVersion safeExtGet('compileSdkVersion', 34)
+    buildToolsVersion safeExtGet('buildToolsVersion', '34.0.0')
+
+    buildFeatures {
+        buildConfig = true  // ✅ Генерирует BuildConfig.java
+    }
+
+    defaultConfig {
+        minSdkVersion safeExtGet('minSdkVersion', 19)
+        targetSdkVersion safeExtGet('targetSdkVersion', 34)
+        versionCode 1
+        versionName "1.0"
+
+        buildConfigField 'String', 'API_HOST', "\"https://pay.hutko.org\""
+    }
+
+    resourcePrefix "hutko_"  // ✅ Предотвращает конфликты с ресурсами
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+
+    publishing {
+        singleVariant('release') {
+            withSourcesJar()
+            withJavadocJar()
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.6.1'  // ✅ Поддержка AndroidX
+    implementation 'com.google.android.material:material:1.12.0'  // ✅ Материальные компоненты
+    compileOnly 'com.google.android.gms:play-services-base:18.1.0'
+    compileOnly 'com.google.android.gms:play-services-wallet:19.1.0'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
