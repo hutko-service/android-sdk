@@ -2,12 +2,12 @@
 
 ## Maven Central
 
-`org.hutko:android:1.17.2`  
-`https://repo1.maven.org/maven2/org/hutko/android/1.17.2/`
+`org.hutko:android:1.17.3`  
+`https://repo1.maven.org/maven2/org/hutko/android/1.17.3/`
 
 ```gradle
 dependencies {
-    implementation "org.hutko:android:1.17.2"
+    implementation "org.hutko:android:1.17.3"
 }
 ```
 
