@@ -45,3 +45,8 @@ out/
 build/
 .gradle/
 .DS_Store
+
+# local publishing secrets
+sonatype-settings.xml
+gradle-local.properties
+hutko-release-public-key.asc

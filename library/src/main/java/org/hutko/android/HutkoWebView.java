@@ -28,7 +28,7 @@ import java.net.URLDecoder;
 * Created by vberegovoy on 28.11.15.
 */
 public class HutkoWebView extends WebView implements HutkoView {
-    private static final String URL_START_PATTERN = "http://secure-redirect.hutko.org/submit/#";
+    private static final String URL_START_PATTERN = "https://secure-redirect.hutko.org/submit/#";
 
     public HutkoWebView(Context context) {
         super(context);

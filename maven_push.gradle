@@ -1,44 +1,37 @@
 apply plugin: 'maven-publish'
 apply plugin: 'signing'
 
-// Проверяем и добавляем isReleaseBuild(), если её нет
-if (!project.hasProperty("isReleaseBuild")) {
-    ext.isReleaseBuild = { ->
-        return !VERSION_NAME.toString().contains("SNAPSHOT")
+import java.security.MessageDigest
+
+// Build a Maven-layout bundle for Sonatype Central Deployments upload.
+def centralRepositoryDir = layout.buildDirectory.dir("central-staging-repo")
+def centralDeploymentDir = layout.buildDirectory.dir("central-deployment")
+
+def localSecretsFile = rootProject.file("gradle-local.properties")
+if (localSecretsFile.exists()) {
+    Properties localSecrets = new Properties()
+    localSecretsFile.withInputStream { stream ->
+        localSecrets.load(stream)
     }
-}
-
-def sonatypeRepositoryUrl
-if (isReleaseBuild()) {
-    println 'RELEASE BUILD'
-    sonatypeRepositoryUrl = hasProperty('RELEASE_REPOSITORY_URL') ? RELEASE_REPOSITORY_URL
-            : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-} else {
-    println 'SNAPSHOT BUILD'
-    sonatypeRepositoryUrl = hasProperty('SNAPSHOT_REPOSITORY_URL') ? SNAPSHOT_REPOSITORY_URL
-            : "https://oss.sonatype.org/content/repositories/snapshots/"
-}
-
-def getRepositoryUsername() {
-    return hasProperty('nexusUsername') ? nexusUsername : ""
-}
-
-def getRepositoryPassword() {
-    return hasProperty('nexusPassword') ? nexusPassword : ""
+    localSecrets.each { key, value ->
+        if (!project.hasProperty(key.toString())) {
+            project.extensions.extraProperties.set(key.toString(), value)
+        }
+    }
 }
 
 afterEvaluate {
     publishing {
         publications {
             mavenJava(MavenPublication) {
-                from components.release  // ✅ Оставляем только здесь!
+                from components.release
 
                 groupId = GROUP
                 artifactId = POM_ARTIFACT_ID
                 version = VERSION_NAME
 
                 pom {
-                    name = POM_ARTIFACT_ID
+                    name = POM_NAME
                     description = POM_DESCRIPTION
                     url = POM_URL
                     scm {
@@ -50,6 +43,7 @@ afterEvaluate {
                         license {
                             name = POM_LICENCE_NAME
                             url = POM_LICENCE_URL
+                            distribution = POM_LICENCE_DIST
                         }
                     }
                     developers {
@@ -64,16 +58,86 @@ afterEvaluate {
 
         repositories {
             maven {
-                url = sonatypeRepositoryUrl
-                credentials {
-                    username = getRepositoryUsername()
-                    password = getRepositoryPassword()
-                }
+                name = "centralBundle"
+                url = centralRepositoryDir
             }
         }
     }
 
+    // Use local GPG installation/keyring to produce *.asc signatures.
     signing {
+        if (project.hasProperty("signingKey") && project.hasProperty("signingPassword")) {
+            def keyId = project.findProperty("signingKeyId")
+            useInMemoryPgpKeys(keyId?.toString(), project.property("signingKey").toString(), project.property("signingPassword").toString())
+        } else {
+            useGpgCmd()
+        }
         sign publishing.publications.mavenJava
+    }
+}
+
+tasks.withType(GenerateModuleMetadata).configureEach {
+    // Keep bundle minimal and Maven-compatible.
+    enabled = false
+}
+
+tasks.register('cleanCentralStaging', Delete) {
+    delete centralRepositoryDir
+    delete centralDeploymentDir
+}
+
+def hexDigest(File file, String algorithm) {
+    MessageDigest digest = MessageDigest.getInstance(algorithm)
+    file.withInputStream { is ->
+        byte[] buffer = new byte[8192]
+        int read
+        while ((read = is.read(buffer)) != -1) {
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().encodeHex().toString()
+}
+
+tasks.register('generateCentralChecksums') {
+    dependsOn 'cleanCentralStaging'
+    dependsOn 'publishMavenJavaPublicationToCentralBundleRepository'
+
+    doLast {
+        File repoDir = centralRepositoryDir.get().asFile
+        if (!repoDir.exists()) {
+            throw new GradleException("Staging repository directory does not exist: ${repoDir}")
+        }
+
+        repoDir.eachFileRecurse { File file ->
+            if (!file.isFile()) {
+                return
+            }
+            if (file.name.endsWith('.md5')
+                    || file.name.endsWith('.sha1')
+                    || file.name.endsWith('.sha256')
+                    || file.name.endsWith('.sha512')) {
+                return
+            }
+
+            File md5File = new File(file.parentFile, "${file.name}.md5")
+            File sha1File = new File(file.parentFile, "${file.name}.sha1")
+
+            md5File.text = hexDigest(file, 'MD5') + '\n'
+            sha1File.text = hexDigest(file, 'SHA-1') + '\n'
+        }
+    }
+}
+
+tasks.register('createCentralBundleZip', Zip) {
+    dependsOn 'generateCentralChecksums'
+
+    archiveFileName = "central-bundle-${POM_ARTIFACT_ID}-${VERSION_NAME}.zip"
+    destinationDirectory = centralDeploymentDir
+
+    def groupPath = GROUP.toString().replace('.', '/')
+    from(centralRepositoryDir) {
+        include "${groupPath}/**"
+        exclude "**/*.sha256"
+        exclude "**/*.sha512"
     }
 }
