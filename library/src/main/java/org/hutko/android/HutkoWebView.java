@@ -138,12 +138,26 @@ public class HutkoWebView extends WebView implements HutkoView {
 
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                Log.e("Hutko", "WebView error"
+                        + " code=" + errorCode
+                        + " description=" + description
+                        + " failingUrl=" + failingUrl
+                        + " currentUrl=" + view.getUrl());
                 handleError(errorCode, description);
             }
 
             @Override
             @TargetApi(Build.VERSION_CODES.M)
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                final String failingUrl = request != null && request.getUrl() != null
+                        ? request.getUrl().toString()
+                        : null;
+                Log.e("Hutko", "WebView error"
+                        + " code=" + error.getErrorCode()
+                        + " description=" + error.getDescription()
+                        + " failingUrl=" + failingUrl
+                        + " currentUrl=" + view.getUrl()
+                        + " isMainFrame=" + (request != null && request.isForMainFrame()));
                 handleError(error.getErrorCode(), error.getDescription().toString());
             }
 
@@ -165,6 +179,9 @@ public class HutkoWebView extends WebView implements HutkoView {
             @Override
             public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
                 super.onReceivedSslError(view, handler, error);
+                Log.e("Hutko", "WebView SSL error"
+                        + " error=" + error
+                        + " currentUrl=" + view.getUrl());
                 confirmation.listener.onNetworkSecurityError(error.toString());
                 handleError();
             }
