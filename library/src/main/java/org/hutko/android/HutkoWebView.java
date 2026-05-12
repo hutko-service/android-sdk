@@ -107,7 +107,7 @@ public class HutkoWebView extends WebView implements HutkoView {
                 if (!detectsStartPattern) {
                     detectsCallbackUrl = url.startsWith(confirmation.callbackUrl);
                     if (!detectsCallbackUrl) {
-                        detectsApiToken = url.startsWith(confirmation.host + "/api/checkout?token=");
+                        detectsApiToken = url.startsWith(confirmation.host + "/api/checkout");
                     }
                 }
 
